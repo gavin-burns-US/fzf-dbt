@@ -10,47 +10,41 @@ JQ_DBT_MODEL_FILTER='
     map({
         model: .value.name,
         resource_type: .value.resource_type,
-        file_path: (.value.root_path + "/" + .value.original_file_path),
+        file_path: (.value.root_path + "./" + .value.original_file_path),
         package_path: (.value.fqn[:-1] | join(".") ), tags: .value.tags
     }) |
     .[] |
     select(.resource_type == "model")
 '
 
-
 # Walk up the filesystem until we find a dbt_project.yml file,
 # then return the path which contains it (if found).
 # Taken from the _dbt zsh completion script:
 # https://github.com/dbt-labs/dbt-completion.bash/blob/master/_dbt
 _dbt_fzf_get_project_root() {
-  slashes=${PWD//[^\/]/}
-  directory="$PWD"
-  for (( n=${#slashes}; n>0; --n ))
-  do
-    test -e "$directory/dbt_project.yml" && echo "$directory" && return
-    directory="$directory/.."
-  done
+    slashes=${PWD//[^\/]/}
+    directory="$PWD"
+    for ((n = ${#slashes}; n > 0; --n)); do
+        test -e "$directory/dbt_project.yml" && echo "$directory" && return
+        directory="$directory/.."
+    done
 }
-
 
 # Prints path of the dbt manifest.json
 _dbt_fzf_get_manifest_path() {
     local project_dir=$(_dbt_fzf_get_project_root)
-    if [ -z "$project_dir" ]
-    then
+    if [ -z "$project_dir" ]; then
         return
     fi
 
     echo "${project_dir}/target/manifest.json"
 }
 
-
 # Prints a list of all dbt models
 _dbt_fzf_get_model_list() {
     local manifest_path=$(_dbt_fzf_get_manifest_path)
 
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
@@ -62,29 +56,27 @@ _dbt_fzf_get_model_list() {
 _dbt_fzf_get_tag_list() {
     local manifest_path=$(_dbt_fzf_get_manifest_path)
 
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
 
-    jq -r "$JQ_DBT_MODEL_FILTER | (\"tag:\" + .tags[])" $manifest_path \
-    | sort | uniq
+    jq -r "$JQ_DBT_MODEL_FILTER | (\"tag:\" + .tags[])" $manifest_path |
+        sort | uniq
 }
 
 # Prints a list of all dbt package paths
 _dbt_fzf_get_package_paths() {
     local manifest_path=$(_dbt_fzf_get_manifest_path)
 
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
 
     local package_list=$(
-        jq -r "$JQ_DBT_MODEL_FILTER | .package_path" $manifest_path \
-        | sort | uniq
+        jq -r "$JQ_DBT_MODEL_FILTER | .package_path" $manifest_path |
+            sort | uniq
     )
 
     echo $package_list | awk '{
@@ -101,28 +93,25 @@ _dbt_fzf_get_package_paths() {
                 }
             }
         }
-    };' \
-    | sort | uniq
+    };' |
+        sort | uniq
 }
 
 # Returns the file path of a model
 _dbt_fzf_get_path_for_model() {
     local model_name=$1
 
-    if [ -z "$model_name" ]
-    then
+    if [ -z "$model_name" ]; then
         echo "No model name specified in first arg."
         return
     fi
 
     local manifest_path=$(_dbt_fzf_get_manifest_path)
 
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
-
 
     local model_path=$(
         jq \
@@ -141,21 +130,18 @@ _dbt_fzf_get_path_for_model() {
 _dbt_fzf_get_models_for_tag() {
     local tag_name=$1
 
-    if [ -z "$tag_name" ]
-    then
+    if [ -z "$tag_name" ]; then
         echo "No tag name specified in first arg."
         return
     fi
 
     # Remove "tag:" prefix if present
-    if [[ $tag_name == tag:* ]]
-    then
+    if [[ $tag_name == tag:* ]]; then
         tag_name=$(echo $tag_name | cut -c 5-)
     fi
 
     local manifest_path=$(_dbt_fzf_get_manifest_path)
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
@@ -167,8 +153,8 @@ _dbt_fzf_get_models_for_tag() {
             select(.tags[] | contains (\"$tag_name\")) |
             .model
         " \
-        $manifest_path \
-    | sort 
+        $manifest_path |
+        sort
 }
 
 # Prints all models that are within the package path that is supplied
@@ -176,15 +162,13 @@ _dbt_fzf_get_models_for_tag() {
 _dbt_fzf_get_models_for_package_path() {
     local package_path=$1
 
-    if [ -z "$package_path" ]
-    then
+    if [ -z "$package_path" ]; then
         echo "No package path specified in first arg."
         return
     fi
 
     local manifest_path=$(_dbt_fzf_get_manifest_path)
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
@@ -196,8 +180,8 @@ _dbt_fzf_get_models_for_package_path() {
             select(.package_path|startswith(\"$package_path\")) |
             .model
         " \
-        $manifest_path \
-    | sort 
+        $manifest_path |
+        sort
 }
 
 # Tries to find a list of models for the selection.
@@ -212,17 +196,15 @@ _dbt_fzf_get_models_for_selection() {
 
     # If the selection starts with "tag:", try to get all models
     # that have that tag applied
-    if [[ $fzf_selection == tag:* ]]
-    then
+    if [[ $fzf_selection == tag:* ]]; then
         selection_models=$(
             _dbt_fzf_get_models_for_tag $fzf_selection
         )
     fi
 
-    # If we didn't find models using the tag search, try the 
+    # If we didn't find models using the tag search, try the
     # package path search
-    if [ -z "$selection_models" ]
-    then
+    if [ -z "$selection_models" ]; then
         selection_models=$(
             _dbt_fzf_get_models_for_package_path $fzf_selection
         )
@@ -230,13 +212,12 @@ _dbt_fzf_get_models_for_selection() {
 
     # If we still couldn't find any models, then try to use `dbt ls`
     # to get the models for the selections.
-    # This is slower, but allows us to find models even for selectors 
+    # This is slower, but allows us to find models even for selectors
     # that use "+"" and "@" modifiers.
-    if [ -z "$selection_models" ]
-    then
+    if [ -z "$selection_models" ]; then
         selection_models=$(
-            dbt ls -m "$fzf_selection" \
-            | awk '{ n=split($1, part, "."); print part[n] }'
+            dbt ls -m "$fzf_selection" |
+                awk '{ n=split($1, part, "."); print part[n] }'
         )
     fi
 
@@ -253,7 +234,7 @@ _dbt_fzf_show_models() {
 _dbt_fzf_show_models_plus() {
     echo "\033[0;31m[models+ - <]\033[0m   [selectors - .]"
     local model_list=$(_dbt_fzf_get_model_list)
-    
+
     (
         echo $model_list
         echo $model_list | awk '{print "+" $0;}'
@@ -261,8 +242,7 @@ _dbt_fzf_show_models_plus() {
         echo $model_list | awk '{print "+" $0 "+";}'
         echo $model_list | awk '{print "@" $0;}'
 
-        for i in {1..3}
-        do
+        for i in {1..3}; do
             echo $model_list | awk -v i="$i" '{print i "+" $0;}'
             echo $model_list | awk -v i="$i" '{print $0 "+" i;}'
         done
@@ -291,9 +271,8 @@ _fzf_complete_dbt() {
         --preview "source $FZF_DBT_PATH;  _dbt_fzf_preview {}" \
         --height $height \
         -- "$@" \
-        < <( _dbt_fzf_show_models )
+        < <(_dbt_fzf_show_models)
 }
-
 
 # This function generates the preview command inside fzt.
 #
@@ -309,17 +288,15 @@ _fzf_complete_dbt() {
 
 _dbt_fzf_preview() {
     local fzf_selection=$1
-    local preview_cmd=${FZF_DBT_PREVIEW_CMD-"cat {}"}
+    local preview_cmd=${FZF_DBT_PREVIEW_CMD-"bat --theme OneHalfLight --color=always --style=numbers {}"}
     local manifest_path=$(_dbt_fzf_get_manifest_path)
 
-    if [ -z "$fzf_selection" ]
-    then
+    if [ -z "$fzf_selection" ]; then
         echo "No dbt fzf_selection specified for preview."
         return
     fi
 
-    if [ -z "$manifest_path" ]
-    then
+    if [ -z "$manifest_path" ]; then
         echo "No dbt project at the current path."
         return
     fi
@@ -330,15 +307,13 @@ _dbt_fzf_preview() {
     local model_path=$(_dbt_fzf_get_path_for_model $fzf_selection)
 
     # If we found a model path, then show the model content as the preview
-    if [ ! -z "$model_path" ]
-    then
+    if [ ! -z "$model_path" ]; then
         final_preview_cmd=${preview_cmd//"{}"/$model_path}
     fi
 
     # If no model path was found, try to get a list of models for
     # the fzf selection and display it
-    if [ -z "$final_preview_cmd" ]
-    then
+    if [ -z "$final_preview_cmd" ]; then
 
         local selection_models=$(
             _dbt_fzf_get_models_for_selection $fzf_selection
@@ -346,8 +321,8 @@ _dbt_fzf_preview() {
 
         # Add line numbers before models
         local selection_models_numbered=$(
-            echo $selection_models \
-            | awk '{ printf( "\t%002d) %s\n", NR, $0 ) }'
+            echo $selection_models |
+                awk '{ printf( "\t%002d) %s\n", NR, $0 ) }'
         )
 
         # Count models
@@ -360,8 +335,7 @@ _dbt_fzf_preview() {
     fi
 
     # If no preview cmd could be generated, show error message
-    if [ -z "$final_preview_cmd" ]
-    then
+    if [ -z "$final_preview_cmd" ]; then
         final_preview_cmd=(
             "echo 'Could not generate a preview for selection \"$fzf_selection\" '"
         )
